@@ -1,5 +1,6 @@
 package com.jk.chiti.controller;
 
+import com.jk.chiti.dto.ApiResponse;
 import com.jk.chiti.entity.ChitPlan;
 import com.jk.chiti.service.ChitPlanService;
 import jakarta.validation.Valid;
@@ -40,14 +41,14 @@ public class ChitPlanController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ChitPlan> updateChitPlan(@PathVariable Long id, @Valid @RequestBody List<Long> userIds) {
-        ChitPlan updatedChitPlan = chitPlanService.addUserToChitPlan(id, userIds);
+    public ResponseEntity<ApiResponse<ChitPlan>> updateChitPlan(@PathVariable Long id, @Valid @RequestBody List<Long> userIds) {
+        ApiResponse<ChitPlan> updatedChitPlan = chitPlanService.addUserToChitPlan(id, userIds);
         return ResponseEntity.ok(updatedChitPlan);
     }
 
     @PutMapping("/{id}/add-users")
-    public ResponseEntity<ChitPlan> addUserToChitPlan(@PathVariable Long id, @RequestBody List<Long> userIds) {
-        ChitPlan chitPlan = chitPlanService.addUserToChitPlan(id, userIds);
+    public ResponseEntity<ApiResponse<ChitPlan>> addUserToChitPlan(@PathVariable Long id, @RequestBody List<Long> userIds) {
+        ApiResponse<ChitPlan> chitPlan = chitPlanService.addUserToChitPlan(id, userIds);
         return ResponseEntity.ok(chitPlan);
     }
 
