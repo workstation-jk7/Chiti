@@ -1,10 +1,14 @@
 package com.jk.chiti.controller;
 
 import com.jk.chiti.dto.ApiResponse;
+import com.jk.chiti.dto.ChitPlanSummaryDto;
+import com.jk.chiti.dto.ChitPlanSummaryRequest;
 import com.jk.chiti.entity.Auction;
 import com.jk.chiti.entity.ChitPlan;
 import com.jk.chiti.entity.User;
 import com.jk.chiti.service.ChitPlanService;
+import com.jk.chiti.service.UserService;
+import com.jk.chiti.utils.AmountConverter;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,9 +26,12 @@ public class ChitPlanController {
 
     private final ChitPlanService chitPlanService;
 
+    private final UserService userService;
+
     @Autowired
-    public ChitPlanController(ChitPlanService chitPlanService) {
+    public ChitPlanController(ChitPlanService chitPlanService, UserService userService) {
         this.chitPlanService = chitPlanService;
+        this.userService = userService;
     }
 
     @GetMapping("/mock")
@@ -61,8 +68,15 @@ public class ChitPlanController {
 
     @PostMapping
     public ResponseEntity<ChitPlan> createChitPlan(@Valid @RequestBody ChitPlan chitPlan) {
+        chitPlan.setAmount(AmountConverter.convertToNumeric(String.valueOf(chitPlan.getPlanType())));
         ChitPlan createdChitPlan = chitPlanService.createChitPlan(chitPlan);
         return new ResponseEntity<>(createdChitPlan, HttpStatus.CREATED);
+    }
+
+    @PostMapping("/plan-summary")
+    public ResponseEntity<List<ChitPlanSummaryDto>> getChitPlanSummaryForMonth(@RequestBody ChitPlanSummaryRequest request) {
+        List<ChitPlanSummaryDto> summary = chitPlanService.getChitPlanSummaries(request.getDate(), request.getPlanType());
+        return ResponseEntity.ok(summary);
     }
 
     @PutMapping("/{id}")
@@ -82,4 +96,17 @@ public class ChitPlanController {
         chitPlanService.deleteChitPlan(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}/add-new-user")
+    public ResponseEntity<ApiResponse<ChitPlan>> addNewUserToChitPlan(@PathVariable Long id, @Valid @RequestBody User user) {
+        // Step 1: Internally call the createUser endpoint to save the user and get the user ID
+        User createdUser = userService.saveOrUpdateUser(user);
+
+        // Step 2: Add the created user's ID to the chit plan
+        ApiResponse<ChitPlan> chitPlan = chitPlanService.addUserToChitPlan(id, List.of(createdUser.getId()));
+
+        // Step 3: Return the updated chit plan
+        return ResponseEntity.ok(chitPlan);
+    }
+
 }

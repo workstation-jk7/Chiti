@@ -25,9 +25,17 @@ public class ChitPlan {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull(message = "Group name cannot be null")
+    @Column(nullable = false)
+    private String planName;
+
     @Min(value = 0, message = "Amount must be positive")
     @Column(nullable = false)
     private double amount;
+
+    @NotNull(message = "Plan Type cannot be null")
+    @Column(nullable = false, name = "plan_type")
+    private String planType;
 
     @Min(value = 1, message = "Number of customers must be at least 1")
     @Column(nullable = false, name = "num_customers")

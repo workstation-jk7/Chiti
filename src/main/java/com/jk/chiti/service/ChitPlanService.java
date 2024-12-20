@@ -1,16 +1,22 @@
 package com.jk.chiti.service;
 
 import com.jk.chiti.dto.ApiResponse;
+import com.jk.chiti.dto.ChitPlanSummaryDto;
+import com.jk.chiti.entity.Auction;
 import com.jk.chiti.entity.ChitPlan;
 import com.jk.chiti.entity.User;
 import com.jk.chiti.exception.ResourceNotFoundException;
 import com.jk.chiti.repository.ChitPlanRepository;
+import com.jk.chiti.utils.AmountConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class ChitPlanService  {
@@ -90,6 +96,48 @@ public class ChitPlanService  {
         chitPlan.getUsers().addAll(users); // Add users to chit plan's list
 
         return chitPlanRepository.save(chitPlan); // Save the updated chit plan
+    }
+
+    public List<ChitPlanSummaryDto> getChitPlanSummaries(LocalDate date, String planType) {
+        // Parse the month (e.g., "2024-08")
+        int year = date.getYear();
+        int month = date.getMonthValue();
+
+        // Fetch all plans matching the conditions
+        List<ChitPlan> chitPlans = chitPlanRepository.findAll()
+                .stream()
+                .filter(plan -> {
+                    // Filter by startDate year and month
+                    LocalDate startDate = plan.getStartDate();
+                    System.out.println("S DATE : "+ startDate + "---" + startDate.getYear() + startDate.getMonthValue()+"A"+year+"B"+month);
+                    boolean matchesMonthYear = startDate.getYear() == year && startDate.getMonthValue() == month;
+                    System.out.println("Match Month : " + matchesMonthYear);
+                    // Optionally filter by planType
+                    if (plan.getPlanType() != null) {
+                        return (planType == null || plan.getPlanType().equals(planType)) && matchesMonthYear;
+                    } else {
+                        return matchesMonthYear;
+                    }
+                })
+                .toList();
+
+        // Map plans to summary DTOs
+        return chitPlans.stream()
+                .map(plan -> {
+
+                    int finishedAuctions = (int) plan.getAuctions().stream()
+                            .filter(auction -> auction.getStatus() == Auction.AuctionStatus.COMPLETED)
+                            .count();
+
+                    return new ChitPlanSummaryDto(
+                            plan.getStartDate().getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                            plan.getStartDate().getDayOfMonth(),
+                            plan.getPeriodMonths(),
+                            finishedAuctions,
+                            plan.getId()
+                    );
+                })
+                .toList();
     }
 
     public void deleteChitPlan(Long id) {
