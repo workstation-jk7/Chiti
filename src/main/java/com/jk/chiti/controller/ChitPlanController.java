@@ -3,6 +3,7 @@ package com.jk.chiti.controller;
 import com.jk.chiti.dto.ApiResponse;
 import com.jk.chiti.dto.ChitPlanSummaryDto;
 import com.jk.chiti.dto.ChitPlanSummaryRequest;
+import com.jk.chiti.dto.FilterRequestDTO;
 import com.jk.chiti.entity.Auction;
 import com.jk.chiti.entity.ChitPlan;
 import com.jk.chiti.entity.User;
@@ -71,6 +72,12 @@ public class ChitPlanController {
         chitPlan.setAmount(AmountConverter.convertToNumeric(String.valueOf(chitPlan.getPlanType())));
         ChitPlan createdChitPlan = chitPlanService.createChitPlan(chitPlan);
         return new ResponseEntity<>(createdChitPlan, HttpStatus.CREATED);
+    }
+
+    @PostMapping("/filter")
+    public ResponseEntity<ChitPlan> filterChitPlans(@RequestBody FilterRequestDTO filterRequest) {
+        ChitPlan chitPlans = chitPlanService.filterChitPlans(filterRequest);
+        return ResponseEntity.ok(chitPlans);
     }
 
     @PostMapping("/plan-summary")

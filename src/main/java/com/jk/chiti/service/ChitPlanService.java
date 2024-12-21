@@ -2,6 +2,7 @@ package com.jk.chiti.service;
 
 import com.jk.chiti.dto.ApiResponse;
 import com.jk.chiti.dto.ChitPlanSummaryDto;
+import com.jk.chiti.dto.FilterRequestDTO;
 import com.jk.chiti.entity.Auction;
 import com.jk.chiti.entity.ChitPlan;
 import com.jk.chiti.entity.User;
@@ -65,6 +66,20 @@ public class ChitPlanService  {
         return new ApiResponse<>(updatedChitPlan, message.toString());
     }
 
+    @Transactional(readOnly = true)
+    public ChitPlan filterChitPlans(FilterRequestDTO filterRequest) {
+        return chitPlanRepository.findAll().stream()
+                .filter(chitPlan -> {
+                    boolean matchesId = filterRequest.getId() == null || chitPlan.getId().equals(filterRequest.getId());
+                    boolean matchesPlanType = filterRequest.getPlanType() == null || chitPlan.getPlanType().equals(filterRequest.getPlanType());
+                    boolean matchesAuctionId = filterRequest.getAuctionId() == null ||
+                            chitPlan.getAuctions().stream().anyMatch(auction -> auction.getId().equals(filterRequest.getAuctionId()));
+
+                    return matchesId && matchesPlanType && matchesAuctionId;
+                }).toList().get(0);
+    }
+
+
     public ChitPlan addUserToChitPlan_(Long chitPlanId, List<Long> userIds) {
         ChitPlan chitPlan = chitPlanRepository.findById(chitPlanId).orElseThrow(() ->
                 new RuntimeException("Chit plan not found with id: " + chitPlanId));
@@ -99,6 +114,54 @@ public class ChitPlanService  {
     }
 
     public List<ChitPlanSummaryDto> getChitPlanSummaries(LocalDate date, String planType) {
+        int year = date.getYear();
+        int month = date.getMonthValue();
+
+        // Fetch all plans
+        List<ChitPlan> chitPlans = chitPlanRepository.findAll()
+                .stream()
+                .filter(plan -> {
+                    LocalDate startDate = plan.getStartDate();
+                    int periodMonths = plan.getPeriodMonths();
+                    ChitPlan.PaymentFrequency frequency = plan.getPaymentFrequency();
+
+                    // Generate all auction dates for the plan
+                    List<LocalDate> auctionDates = new ArrayList<>();
+                    for (int i = 0; i < periodMonths; i++) {
+                        if (frequency == ChitPlan.PaymentFrequency.MONTHLY) {
+                            auctionDates.add(startDate.plusMonths(i));
+                        } else if (frequency == ChitPlan.PaymentFrequency.QUARTERLY && i % 3 == 0) {
+                            auctionDates.add(startDate.plusMonths(i));
+                        }
+                    }
+
+                    // Check if any auction falls within the given month
+                    return auctionDates.stream()
+                            .anyMatch(auctionDate -> auctionDate.getYear() == year && auctionDate.getMonthValue() == month)
+                            && (planType == null || plan.getPlanType().equals(planType));
+                })
+                .toList();
+
+        // Map plans to summary DTOs
+        return chitPlans.stream()
+                .map(plan -> {
+                    int finishedAuctions = (int) plan.getAuctions().stream()
+                            .filter(auction -> auction.getStatus() == Auction.AuctionStatus.COMPLETED)
+                            .count();
+
+                    return new ChitPlanSummaryDto(
+                            plan.getStartDate().getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                            plan.getStartDate().getDayOfMonth(),
+                            plan.getPeriodMonths(),
+                            finishedAuctions,
+                            plan.getId()
+                    );
+                })
+                .toList();
+    }
+
+
+    public List<ChitPlanSummaryDto> getChitPlanSummaries1(LocalDate date, String planType) {
         // Parse the month (e.g., "2024-08")
         int year = date.getYear();
         int month = date.getMonthValue();
